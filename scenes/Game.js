@@ -18,7 +18,7 @@ export default class Game extends Phaser.Scene {
     // load assets
     this.load.image("sky", "./public/assets/crowlspace.png");
     this.load.image("ground", "./public/assets/platform_2.png");
-    this.load.image("star", "./public/assets/Coin.png");
+    this.load.image("star", "./public/assets/moneda.png");
     this.load.image("bomb", "./public/assets/bomb_2.png");
     this.load.spritesheet("dude", "./public/assets/dude_2.png", {
       frameWidth: 32,
