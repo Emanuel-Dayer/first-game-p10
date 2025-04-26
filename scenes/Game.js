@@ -16,11 +16,11 @@ export default class Game extends Phaser.Scene {
 
   preload() {
     // load assets
-    this.load.image("sky", "./public/assets/sky.png");
-    this.load.image("ground", "./public/assets/platform.png");
-    this.load.image("star", "./public/assets/star.png");
-    this.load.image("bomb", "./public/assets/bomb.png");
-    this.load.spritesheet("dude", "./public/assets/dude.png", {
+    this.load.image("sky", "./public/assets/crowlspace.png");
+    this.load.image("ground", "./public/assets/platform_2.png");
+    this.load.image("star", "./public/assets/coin.png");
+    this.load.image("bomb", "./public/assets/bomb_2.png");
+    this.load.spritesheet("dude", "./public/assets/dude_2.png", {
       frameWidth: 32,
       frameHeight: 48,
     });
@@ -64,6 +64,10 @@ export default class Game extends Phaser.Scene {
     });
 
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W); 
+    this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A); 
+    this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S); 
+    this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
 
     this.stars = this.physics.add.group({
       key: "star",
@@ -82,7 +86,7 @@ export default class Game extends Phaser.Scene {
 
     this.scoreText = this.add.text(16, 16, `Score: ${this.score}`, {
       fontSize: "32px",
-      fill: "#000",
+      fill: "#fff",
     });
 
     this.physics.add.collider(this.player, this.platforms);
@@ -104,15 +108,21 @@ export default class Game extends Phaser.Scene {
       null,
       this
     );
+
+    //Agregando que se pueda desactivar el debug con la P, porque me molesta verlo asi mientras juego
+    this.physics.world.drawDebug = false;
+    this.ModoDebug = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
   }
+
 
   update() {
     // update game objects
-    if (this.cursors.left.isDown) {
+    
+    if (this.cursors.left.isDown || this.keyA.isDown) {
       this.player.setVelocityX(-160);
 
       this.player.anims.play("left", true);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.keyD.isDown) {
       this.player.setVelocityX(160);
 
       this.player.anims.play("right", true);
@@ -122,16 +132,28 @@ export default class Game extends Phaser.Scene {
       this.player.anims.play("turn");
     }
 
-    if (this.cursors.up.isDown && this.player.body.touching.down) {
+    if ((this.cursors.up.isDown || this.keyW.isDown) && this.player.body.touching.down) {
       this.player.setVelocityY(-330);
+    }
+
+    //Activar desactivar el debug con la P
+    if (Phaser.Input.Keyboard.JustDown(this.ModoDebug)) { //el justdown solo devuelve true o false una vez hasta que lo presionemos otra vez
+      if (this.physics.world.drawDebug) {
+        this.physics.world.drawDebug = false;
+        this.physics.world.debugGraphic.clear(); //porque no son visibles pero estan ahi, asi que los limpio
+      }
+      else {
+        this.physics.world.drawDebug = true;
+      }
     }
   }
 
+  
   collectStar(player, star) {
     star.disableBody(true, true);
 
-    this.score += 10;
-    this.scoreText.setText(`Score: ${this.score}`);
+    this.score += 25;
+    this.scoreText.setText(`Score: ${this.score}`); 
 
     if (this.stars.countActive(true) === 0) {
       //  A new batch of stars to collect
