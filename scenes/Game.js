@@ -201,6 +201,13 @@ export default class Game extends Phaser.Scene {
   }
 
   hitBomb(player, bomb) {
+    //sacar las teclas para que no podamos presionarlas
+    this.input.keyboard.removeAllKeys();
+    //volver a poner la R para reiniciar
+    this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
+
+    this.player.anims.pause();
+    this.playerCanMove = false;
     this.physics.pause();
 
     this.player.setTint(0xff0000);
@@ -208,6 +215,18 @@ export default class Game extends Phaser.Scene {
     this.player.anims.play("turn");
 
     this.gameOver = true;
+
+    if (this.gameOver === true) 
+    {
+      this.scoreText.setOrigin(0.5).setPosition(400, 300);  //setposition cambia la posicion del texto
+  
+      this.Perdiste = this.add.text(400, 250, `GAME OVER`, {
+        fontSize: "32px",
+        fill: "#fff",
+        stroke: "#000",
+        strokeThickness: 8,
+      }).setOrigin(0.5); //el set origin cambia el punto de referencia desde donde se mueve la imagen
+    }
   }
 
   ReinicConR() {
