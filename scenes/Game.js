@@ -83,6 +83,7 @@ export default class Game extends Phaser.Scene {
 
     this.stars.children.iterate(function (child) {
       child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+      child.setCollideWorldBounds(true);
     });
 
     this.bombs = this.physics.add.group();
@@ -129,11 +130,40 @@ export default class Game extends Phaser.Scene {
 
     // Crear la imagen de rkey y ocultarla inicialmente
     this.rkeyImage = this.add.image(400, 300, "rkey").setScale(1).setAlpha(0);
-    this.rkeyImage.setDepth(10); //por encima de otros elementos
+    this.rkeyImage.setDepth(11); //por encima de otros elementos
     this.textures.get("rkey").setFilter(Phaser.Textures.FilterMode.NEAREST); //para que no se vea borroso
 
     //para que no nos movamos mientras se reinicia el juego o perdemos
     this.playerCanMove = true; 
+
+    // Configurar el temporizador
+    this.TiempoRestante = 30; // Tiempo inicial en segundos
+    this.Tiempo = this.add.text(580, 16, `Tiempo: ${this.TiempoRestante}s`, {
+      fontSize: "32px",
+      fill: "#fff",
+      stroke: "#000",
+      strokeThickness: 8,
+    });
+
+    // Crear el evento de tiempo, que se ejecuta cada segundo
+    this.reinicio = false;
+    this.terminarbucle = true;
+    this.time.addEvent({
+      delay: 1000, //para pasar de ms a segundos, 1000ms = 1s, y que no se ejecute de una cada ms
+      callback: () => { // Función que se ejecuta cada segundo
+        if (this.TiempoRestante !== 0 && this.gameOver === false && this.reinicio === false) {
+          this.TiempoRestante--;
+          this.Tiempo.setText(`Tiempo: ${this.TiempoRestante}s`);
+        } else {
+          if (this.reinicio === false) {
+            this.GameOver();
+            this.terminarbucle = false; // Detener el evento de tiempo
+          }
+        }
+      },
+      callbackScope: this, // Asegura que `this` sea la escena actual.
+      loop: this.terminarbucle, // Repite el evento hasta que se detenga
+    });
   }
 
 
@@ -179,9 +209,10 @@ export default class Game extends Phaser.Scene {
     star.disableBody(true, true);
 
     this.score += 25;
-    this.scoreText.setText(`Score: ${this.score}`); 
+    this.scoreText.setText(`Score: ${this.score}`);
 
-    if (this.stars.countActive(true) === 0) {
+    if (this.stars.countActive(true) === 0) 
+    {
       //  A new batch of stars to collect
       this.stars.children.iterate(function (child) {
         child.enableBody(true, child.x, 0, true, true);
@@ -197,36 +228,63 @@ export default class Game extends Phaser.Scene {
       bomb.setCollideWorldBounds(true);
       bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
       bomb.allowGravity = false;
+
+      // Decidir si la bomba interactúa con las plataformas
+      if (Phaser.Math.Between(0, 3) === 1) {
+        bomb.setTint(0x0000ff); // Tinte azul para las bombas que interactúan con plataformas
+        this.physics.add.collider(bomb, this.platforms);
+      }
+      else if (Phaser.Math.Between(0, 3) === 2) 
+      {
+        bomb.setTint(0x00ff00); // Tinte verde, con otras bombas
+        this.physics.add.collider(bomb, this.bombs);
+      }
+      else if (Phaser.Math.Between(0, 3) === 3) 
+      {
+        bomb.setTint(0xffff00); // Tinte amarillo, con otras bombas y plataformas
+        this.physics.add.collider(bomb, this.bombs);
+        this.physics.add.collider(bomb, this.platforms);
+      };
+
+      this.TiempoRestante = Math.round(this.TiempoRestante / 2) + 30; // Reiniciar el tiempo y agregarle lo que queda
     }
   }
 
   hitBomb(player, bomb) {
+    this.GameOver();
+    this.gameOver = true;
+  }
+
+  GameOver() 
+  {
     //sacar las teclas para que no podamos presionarlas
     this.input.keyboard.removeAllKeys();
     //volver a poner la R para reiniciar
     this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-
+    
     this.player.anims.pause();
     this.playerCanMove = false;
     this.physics.pause();
-
+    
     this.player.setTint(0xff0000);
-
+    
     this.player.anims.play("turn");
 
-    this.gameOver = true;
+    this.Perdiste = this.add.text(400, 250, `GAME OVER`, {
+      fontSize: "32px",
+      fill: "#fff",
+      stroke: "#000",
+      strokeThickness: 8,
+    }).setOrigin(0.5).setDepth(10); //el set origin cambia el punto de referencia desde donde se mueve
 
-    if (this.gameOver === true) 
-    {
-      this.scoreText.setOrigin(0.5).setPosition(400, 300);  //setposition cambia la posicion del texto
-  
-      this.Perdiste = this.add.text(400, 250, `GAME OVER`, {
-        fontSize: "32px",
-        fill: "#fff",
-        stroke: "#000",
-        strokeThickness: 8,
-      }).setOrigin(0.5); //el set origin cambia el punto de referencia desde donde se mueve la imagen
-    }
+    this.scoreText.setOrigin(0.5).setPosition(400, 300);  //setposition cambia la posicion del texto
+
+    this.Tiempo.setText(`Tiempo Restante: ${this.TiempoRestante} Segundos`, {
+      fontSize: "32px",
+      fill: "#fff",
+      stroke: "#000",
+      strokeThickness: 8,
+    }).setOrigin(0.5).setPosition(400, 350).setDepth(10);
   }
 
   ReinicConR() {
@@ -236,6 +294,7 @@ export default class Game extends Phaser.Scene {
     this.player.anims.play("turn"); // Reiniciar la animación al estado neutral solo si puede moverse
     this.playerCanMove = false;
     this.physics.pause();
+    this.reinicio = true;
 
     // Mostrar la imagen de rkey y aplicar un efecto de shake muy reducido
     this.rkeyImage.setAlpha(1).setScale(8); // Tamaño inicial aumentado
