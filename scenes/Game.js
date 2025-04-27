@@ -20,6 +20,7 @@ export default class Game extends Phaser.Scene {
     this.load.image("ground", "./public/assets/platform_2.png");
     this.load.image("star", "./public/assets/moneda.png");
     this.load.image("bomb", "./public/assets/bomb_2.png");
+    this.load.image("rkey", "./public/assets/rkey.png");
     this.load.spritesheet("dude", "./public/assets/dude_2.png", {
       frameWidth: 32,
       frameHeight: 48,
@@ -66,8 +67,13 @@ export default class Game extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W); 
     this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A); 
-    this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S); 
+    /* tal vez la use para algo para caer mas rapido
+    this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    */
     this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+
+    //para reiniciar
+    this.keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
     this.stars = this.physics.add.group({
       key: "star",
@@ -87,6 +93,14 @@ export default class Game extends Phaser.Scene {
     this.scoreText = this.add.text(16, 16, `Score: ${this.score}`, {
       fontSize: "32px",
       fill: "#fff",
+      stroke: "#000",
+      strokeThickness: 8,
+    });
+    this.Reiniciar = this.add.text(350, 560, `Presiona la tecla "R" para reiniciar`, {
+      fontSize: "20px",
+      fill: "#fff",
+      stroke: "#000",
+      strokeThickness: 8,
     });
 
     this.physics.add.collider(this.player, this.platforms);
@@ -112,42 +126,54 @@ export default class Game extends Phaser.Scene {
     //Agregando que se pueda desactivar el debug con la P, porque me molesta verlo asi mientras juego
     this.physics.world.drawDebug = false;
     this.ModoDebug = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
+    // Crear la imagen de rkey y ocultarla inicialmente
+    this.rkeyImage = this.add.image(400, 300, "rkey").setScale(1).setAlpha(0);
+    this.rkeyImage.setDepth(10); //por encima de otros elementos
+    this.textures.get("rkey").setFilter(Phaser.Textures.FilterMode.NEAREST); //para que no se vea borroso
+
+    //para que no nos movamos mientras se reinicia el juego o perdemos
+    this.playerCanMove = true; 
   }
 
 
   update() {
-    // update game objects
-    
-    if (this.cursors.left.isDown || this.keyA.isDown) {
-      this.player.setVelocityX(-160);
+    // Movimiento del jugador solo si está permitido
+    if (this.playerCanMove) {
+      if (this.cursors.left.isDown || this.keyA.isDown) {
+        this.player.setVelocityX(-160);
+        this.player.anims.play("left", true);
+      } else if (this.cursors.right.isDown || this.keyD.isDown) {
+        this.player.setVelocityX(160);
+        this.player.anims.play("right", true);
+      } else {
+        this.player.setVelocityX(0);
+        this.player.anims.play("turn");
+      }
 
-      this.player.anims.play("left", true);
-    } else if (this.cursors.right.isDown || this.keyD.isDown) {
-      this.player.setVelocityX(160);
-
-      this.player.anims.play("right", true);
+      if ((this.cursors.up.isDown || this.keyW.isDown) && this.player.body.touching.down) {
+        this.player.setVelocityY(330 * -1);
+      }
     } else {
-      this.player.setVelocityX(0);
-
-      this.player.anims.play("turn");
+      // Si el jugador no puede moverse, pausa las animaciones
+      this.player.anims.pause();
     }
 
-    if ((this.cursors.up.isDown || this.keyW.isDown) && this.player.body.touching.down) {
-      this.player.setVelocityY(-330);
-    }
-
-    //Activar desactivar el debug con la P
-    if (Phaser.Input.Keyboard.JustDown(this.ModoDebug)) { //el justdown solo devuelve true o false una vez hasta que lo presionemos otra vez
+    // Activar/desactivar el debug con la tecla P
+    if (Phaser.Input.Keyboard.JustDown(this.ModoDebug)) {
       if (this.physics.world.drawDebug) {
         this.physics.world.drawDebug = false;
-        this.physics.world.debugGraphic.clear(); //porque no son visibles pero estan ahi, asi que los limpio
-      }
-      else {
+        this.physics.world.debugGraphic.clear();
+      } else {
         this.physics.world.drawDebug = true;
       }
     }
-  }
 
+    // Reiniciar el juego si se presiona la tecla R
+    if (Phaser.Input.Keyboard.JustDown(this.keyR)) {
+      this.ReinicConR();
+    }
+  }
   
   collectStar(player, star) {
     star.disableBody(true, true);
@@ -182,5 +208,40 @@ export default class Game extends Phaser.Scene {
     this.player.anims.play("turn");
 
     this.gameOver = true;
+  }
+
+  ReinicConR() {
+    // Desactivar el movimiento del jugador, pausar el juego y detener animaciones
+    this.input.keyboard.enabled = false;
+    this.player.anims.pause(); // Pausar las animaciones del jugador
+    this.player.anims.play("turn"); // Reiniciar la animación al estado neutral solo si puede moverse
+    this.playerCanMove = false;
+    this.physics.pause();
+
+    // Mostrar la imagen de rkey y aplicar un efecto de shake muy reducido
+    this.rkeyImage.setAlpha(1).setScale(8); // Tamaño inicial aumentado
+    this.tweens.add({ //tweens para hacer animaciones
+      targets: this.rkeyImage, //target nos dice a que le aplicamos la animacion
+      x: { value: 400 + 3, duration: 20, yoyo: true, repeat: 5 }, // Shake horizontal || yoyo hace que vuelva a la posicion original despues de moverse, basicamente hace lo mismo pero en reversa asta llegar a la posicion original
+      y: { value: 300 + 3, duration: 20, yoyo: true, repeat: 5 }, // Shake vertical
+      onComplete: () => { //cuando termina la animacion
+        // Animar el crecimiento rápido y la disminución de opacidad
+        this.tweens.add({ 
+          targets: this.rkeyImage, 
+          scale: { from: 8, to: 80 }, //Crecimiento
+          alpha: { from: 1, to: 0 }, //opacidad
+          duration: 500,
+          onComplete: () => { 
+            // Restaurar las físicas, animaciones y para presionar teclas antes de reiniciar
+            this.physics.resume();
+            this.player.anims.resume();
+            this.input.keyboard.enabled = true;
+
+            // Reiniciar la escena
+            this.scene.restart();
+          },
+        });
+      },
+    });
   }
 }
